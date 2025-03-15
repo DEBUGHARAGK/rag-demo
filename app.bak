@@ -1,0 +1,55 @@
+import os
+import streamlit as st
+from langchain import PromptTemplate, LLMChain
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.agents import Tool, AgentExecutor
+
+# Access the API key from the environment variable
+api_key = os.getenv("GOOGLE_API_KEY")
+
+# Initialize the Gemini AI model
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", api_key=api_key)
+
+# Define a prompt template
+template = "You are a helpful assistant. Answer the following question: {question}"
+prompt = PromptTemplate(template=template, input_variables=["question"])
+
+# Create a chain
+chain = LLMChain(prompt=prompt, llm=llm)
+
+# Define a tool for the agent
+def search_tool(query):
+    return f"Searching for {query}..."
+
+tool = Tool(name="search", func=search_tool)
+
+# Create an agent
+agent = AgentExecutor(tools=[tool])
+
+# Streamlit app setup
+st.title("LangChain Gemini AI Chatbot")
+st.write("Ask me anything!")
+
+# Initialize session state for chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Function to get response from Gemini AI
+def get_response(user_input):
+    # Use the chain to process the input
+    response = chain.run({"question": user_input})
+    return response
+
+# User input
+user_input = st.text_input("You:", key="user_input")
+
+# Display chat history
+for message in st.session_state.messages:
+    st.write(f"{message['role']}: {message['content']}")
+
+# Handle user input
+if user_input:
+    st.session_state.messages.append({"role": "You", "content": user_input})
+    response = get_response(user_input)
+    st.session_state.messages.append({"role": "Gemini AI", "content": response})
+    st.experimental_rerun()
